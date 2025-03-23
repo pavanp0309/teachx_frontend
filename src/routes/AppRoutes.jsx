@@ -7,6 +7,7 @@ import BatchDetails from "../pages/batches/BatchDetails";
 import BatchRoutes from "./batchroutes/BatchRoutes";
 import Login from "../components/common/login/Login";
 import Profile from "../components/common/login/Profile";
+import JoinBatch from "../pages/batches/JoinBatch";
 // import Courses from "../pages/courses/Courses";
 // import Users from "../pages/users/Users";
 // import Announcements from "../pages/announcements/Announcements";
@@ -34,6 +35,7 @@ const AppRoutes = ({ token }) => {
       <Route element={<ProtectedRoute allowedRoles={["superadmin", "admin", "trainer", "student"]} />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/join-batch" element={<JoinBatch />} />
       </Route>
 
       {/* Redirect unknown routes */}

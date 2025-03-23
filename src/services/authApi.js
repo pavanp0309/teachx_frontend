@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:5000/api/auth", // Replace with actual API (authapi,batchapi ,attandapi)
+    baseUrl: "https://teachx-backend-bap8.vercel.app/api/auth", // Replace with actual API (authapi,batchapi ,attandapi)
     prepareHeaders: (headers, { getState }) => {
       const token = getState().auth.token;
       if (token) {

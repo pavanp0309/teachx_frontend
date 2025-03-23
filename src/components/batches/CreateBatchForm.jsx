@@ -1,62 +1,92 @@
-import React, { useState } from "react";
-import { useCreateBatchMutation } from "../../services/batches/batchApi";
-import { Form, Input, Button, DatePicker, message, InputNumber } from "antd";
+import React, { useEffect } from "react";
+import { Form, Input, DatePicker, Button, message, Modal } from "antd";
+import moment from "moment"; // Import moment for date handling
+import { useCreateBatchMutation, useUpdateBatchMutation } from "../../services/batches/batchApi";
 
-
-const CreateBatchForm = () => {
-  const [createBatch, { isLoading }] = useCreateBatchMutation();
+const CreateBatchForm = ({ initialValues, visible, onCancel, onSuccess }) => {
   const [form] = Form.useForm();
+  const [createBatch] = useCreateBatchMutation();
+  const [updateBatch] = useUpdateBatchMutation();
+
+  // Set initial values when the form is rendered or when initialValues change
+  useEffect(() => {
+    if (initialValues) {
+      form.setFieldsValue({
+        ...initialValues,
+        startDate: initialValues.startDate ? moment(initialValues.startDate) : null,
+      });
+    } else {
+      form.resetFields(); // Reset the form if no initialValues are provided
+    }
+  }, [initialValues, form]);
 
   const handleSubmit = async (values) => {
-    const { name, code, startDate, endDate, schedule } = values;
-
-    // Formatting dates before sending to the backend
-    const formattedStartDate = startDate ? startDate.format("YYYY-MM-DD") : "";
-    const formattedEndDate = endDate ? endDate.format("YYYY-MM-DD") : "";
-
     try {
-      await createBatch({
-        name,
-        code,
-        startDate: formattedStartDate,
-        endDate: formattedEndDate,
-        schedule,
-      }).unwrap();
-      message.success("Batch created successfully!");
-      form.resetFields();
+      // Format the startDate before submitting
+      const formattedValues = {
+        ...values,
+        startDate: values.startDate.format("YYYY-MM-DD"),
+      };
+
+      if (initialValues) {
+        // If initialValues exist, it's an edit operation
+        await updateBatch({ batchId: initialValues._id, updatedBatchData: formattedValues }).unwrap();
+        message.success("Batch updated successfully!");
+      } else {
+        // If no initialValues, it's a create operation
+        await createBatch(formattedValues).unwrap();
+        message.success("Batch created successfully!");
+      }
+
+      onSuccess(); // Call parent function to refetch batches and close form
     } catch (error) {
-      message.error("Failed to create batch!");
+      message.error("Failed to save batch!");
     }
   };
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical">
-      <Form.Item name="name" label="Batch Name" rules={[{ required: true, message: "Enter batch name!" }]}>
-        <Input placeholder="Enter batch name" />
-      </Form.Item>
+    <Modal
+      title={initialValues ? "Edit Batch" : "Create Batch"} // Dynamic title
+      visible={visible} // Control visibility of the modal
+      onCancel={onCancel} // Handle modal close
+      footer={null} // Remove default footer buttons
+    >
+      <Form form={form} onFinish={handleSubmit} layout="vertical">
+        {/* Batch Name Field with Character Limit */}
+        <Form.Item
+          name="name"
+          label="Batch Name"
+          rules={[
+            { required: true, message: "Please enter a batch name!" },
+            {
+              max: 30, // Maximum 50 characters
+              message: "Batch name must be less than 40 characters!",
+            },
+          ]}
+        >
+          <Input
+            placeholder="Enter batch name"
+            maxLength={50} // Enforces a hard limit in the input field
+          />
+        </Form.Item>
 
-      <Form.Item name="code" label="Batch Code" rules={[{ required: true, message: "Enter batch code!" }]}>
-        <Input placeholder="Enter unique batch code" />
-      </Form.Item>
+        <Form.Item name="subject" label="Subject" rules={[{ required: true }]}>
+          <Input placeholder="Enter the batch subject (e.g., JavaScript, React, etc.)" />
+        </Form.Item>
 
+        <Form.Item name="startDate" label="Start Date" rules={[{ required: true }]}>
+          <DatePicker />
+        </Form.Item>
 
+        <Form.Item name="schedule" label="Schedule">
+          <Input placeholder="Batch schedule (e.g., Weekdays 7-9 PM)" />
+        </Form.Item>
 
-      <Form.Item name="startDate" label="Start Date" rules={[{ required: true, message: "Enter start date!" }]}>
-        <DatePicker format="YYYY-MM-DD" placeholder="Select start date" />
-      </Form.Item>
-
-      <Form.Item name="endDate" label="End Date" rules={[{ required: true, message: "Enter end date!" }]}>
-        <DatePicker format="YYYY-MM-DD" placeholder="Select end date" />
-      </Form.Item>
-
-      <Form.Item name="schedule" label="Schedule" rules={[{ required: true, message: "Enter schedule!" }]}>
-        <Input placeholder="Enter batch schedule (e.g., Mon, Wed, Fri)" />
-      </Form.Item>
-
-      <Button type="primary" htmlType="submit" loading={isLoading}>
-        Create Batch
-      </Button>
-    </Form>
+        <Button type="primary" htmlType="submit">
+          {initialValues ? "Update Batch" : "Create Batch"}
+        </Button>
+      </Form>
+    </Modal>
   );
 };
 

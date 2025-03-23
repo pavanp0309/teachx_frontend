@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { useSendOtpMutation, useVerifyOtpMutation } from "../../../services/authApi";//api services
+import { useLocation, useNavigate } from "react-router-dom";
+import { useSendOtpMutation, useVerifyOtpMutation } from "../../../services/authApi";
 import { Input, Button, Card, message, Row, Col, Typography } from "antd";
-import { loginSuccess } from "../../../services/authSlice"; //storing the user data and roles
+import { loginSuccess } from "../../../services/authSlice";
 
 const { Text } = Typography;
 
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const redirect = queryParams.get("redirect"); // Get redirect URL from query params
   const token = useSelector((state) => state.auth.token);
   const user = useSelector((state) => state.auth.user);
   const [email, setEmail] = useState("");
@@ -21,10 +24,31 @@ const Login = () => {
   const [sendOtp, { isLoading: sendingOtp }] = useSendOtpMutation();
   const [verifyOtp, { isLoading: verifyingOtp }] = useVerifyOtpMutation();
 
+  // Redirect after login
   useEffect(() => {
-    if (token && user) navigate("/"); // Redirect if logged in
-  }, [token, user, navigate]);
+    if (token && user) {
+      if (redirect) {
+        navigate(redirect); // Redirect to the intended URL (e.g., /join-batch?code=RED-4947)
+      } else {
+        // Redirect to the respective dashboard based on role
+        switch (user.role) {
+          case "admin":
+            navigate("/admin/dashboard");
+            break;
+          case "trainer":
+            navigate("/trainer/dashboard");
+            break;
+          case "student":
+            navigate("/student/dashboard");
+            break;
+          default:
+            navigate("/");
+        }
+      }
+    }
+  }, [token, user, navigate, redirect]);
 
+  // OTP countdown timer
   useEffect(() => {
     let interval;
     if (otpSent && timer > 0) {
@@ -33,6 +57,7 @@ const Login = () => {
     return () => clearInterval(interval);
   }, [otpSent, timer]);
 
+  // Send OTP
   const handleSendOtp = async () => {
     try {
       await sendOtp({ email: email }).unwrap();
@@ -44,24 +69,43 @@ const Login = () => {
     }
   };
 
+  // Verify OTP and login
   const handleVerifyOtp = async () => {
     try {
-      console.log("Email before sending OTP:", email)
       const otpString = otp.join(""); // Convert OTP array to string
-      const response = await verifyOtp({ email:email, otp: otpString }).unwrap();
-      
+      const response = await verifyOtp({ email: email, otp: otpString }).unwrap();
+
       // Dispatch user details & token to Redux store
       dispatch(loginSuccess({ user: response.user, token: response.token }));
-  
+
       message.success("Login successful!");
-      setTimeout(() => {
-        navigate("/");
-      }, 500); // 
+
+      // Redirect immediately after login
+      if (redirect) {
+        navigate(redirect); // Redirect to the intended URL (e.g., /join-batch?code=RED-4947)
+      } else {
+        // Default redirection based on role
+        switch (response.user.role) {
+          case "admin":
+            navigate("/admin/dashboard");
+            break;
+          case "trainer":
+            navigate("/trainer/dashboard");
+            break;
+          case "student":
+            navigate("/student/dashboard");
+            break;
+          default:
+            navigate("/");
+        }
+      }
     } catch (err) {
+      setError(err?.data?.message || "Invalid OTP");
       message.error(err?.data?.message || "Invalid OTP");
     }
   };
 
+  // Handle OTP input change
   const handleOtpChange = (index, value) => {
     if (!/^\d?$/.test(value)) return; // Only allow numbers
 
